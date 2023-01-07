@@ -7,7 +7,7 @@ require('dotenv').config();
  * @NOTE : This MongoDB cluster is for testing purposes.
  * You can either change these values or use this instance for testing,
  * In production, these @credentials and @keys will be stored in a key management system
- * @TODO : Fill in your mongoDB credentials
+ * @TODO : Fill in your mongoDB credentials using .env file
  */
 const mongoClusterName: string = process.env.MONGOCLUSTERNAME;
 const mongoUser: string = process.env.MONGOUSER;
