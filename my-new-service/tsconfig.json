@@ -7,8 +7,14 @@
     "noUnusedParameters": true,
     "removeComments": true,
     "sourceMap": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
     "target": "ES2020",
-    "outDir": "lib"
+    "importHelpers": true,
+    "incremental": true,
+    "watch": true,
+    "outDir": "lib",
+    "rootDirs": ["./src"]
   },
   "include": ["src/**/*.ts", "serverless.ts"],
   "exclude": [
