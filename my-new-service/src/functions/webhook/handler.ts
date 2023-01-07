@@ -30,7 +30,7 @@ interface Payload {
 }
 
 /**
- *  The verify function Checks and validate that the webhook came from Mailgun
+ *  The handler function to verify the mailgun webhook request signature.
  * @param param0
  * @returns
  */
@@ -53,13 +53,15 @@ const verify = ({
 };
 
 /**
- * Lambda that accepts Email status events from mailgun
- * It transforms and publish to SNS
- * A copy of the event is saved in a database
+ * Lambda function that accepts the email status event from Mailgun. Transforms
+ * the event into a JSON string and sends it to the SNS topic. A copy of the
+ * event is then stored in the database.
+ *
  * @param event
  * @param _context
  * @returns
  */
+
 const webhook: APIGatewayProxyHandler = async (
   event: APIGatewayProxyEvent,
   _context: Context
@@ -73,7 +75,7 @@ const webhook: APIGatewayProxyHandler = async (
   // Get a MongoDBClient.
   const client = await connectToDatabase();
 
-  // Verify if event is from mailgun
+  //Verify if the request is from Mailgun
   try {
     const {
       timestamp,
@@ -96,18 +98,19 @@ const webhook: APIGatewayProxyHandler = async (
   } catch (error) {
     console.log(error.message, error.stack);
     if (error instanceof TypeError) {
-      // This occurs if timestamp, token or signature is not present in body.signature
+      // TypeError: Cannot read property 'signature' of undefined is thrown when
+      // the request is not from mailgun or the signature is not valid.
       return formatJSONResponse._400({
-        message: "This is a fraudulent request",
+        message: "Could not verify this request is from mailgun",
       });
     }
     return formatJSONResponse._400({ message: "Request not permitted" });
   }
 
-  //Get AWS AccountID stored using parameter store
+  // Get AWS account ID from ssm parameter store and set it as a variable
   const accountId: string = await getAWSAccountId();
 
-  //validate payload with interface typing
+  // Validate payload using the Mailgun payload schema
   const payload: Payload = {
     Provider: "Mailgun",
     timestamp: body.signature.timestamp || "No time stamp",
@@ -120,25 +123,29 @@ const webhook: APIGatewayProxyHandler = async (
     TopicArn: `arn:aws:sns:us-east-1:${accountId}:emailStatuses`,
   };
 
-  //Publish SNS message
+  // Send the message to SNS
   try {
     sns.publish(params).promise();
     console.log("push sent");
     console.log(payload);
     message = "Success";
-    // Inserts incoming webhook event to database
+
+    // Store the event in the database
     const mailgunEvents = client
       .db("email-tracker")
       .collection("mailgun-events");
-    let dbOperation = mailgunEvents.insertOne(body);
+    // Insert the event into the database
+    let dbOperation = await mailgunEvents.insertOne(body);
     if (dbOperation) {
-      console.log("event inserted into the database");
+      console.log("Mailgun event stored in database");
     }
     return formatJSONResponse._200({ message: message });
   } catch (error) {
+    // If the message fails to send, log the error
     console.log(error.message);
     message = "Error occured";
     return formatJSONResponse._400({ message: message });
   }
 };
+
 export const main = webhook;
